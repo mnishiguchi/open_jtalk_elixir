@@ -21,3 +21,18 @@ open_jtalk_elixir-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Don’t commit host binaries
+/**/priv/bin/
+/**/priv/lib/
+/obj
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# Large fetched assets
+/priv/dic/
+/priv/voices/
+/vendor/
