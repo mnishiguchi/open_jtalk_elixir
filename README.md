@@ -155,9 +155,9 @@ OpenJTalk.say("こんにちは")
 Bundling the full dictionary + voice + binary increases firmware size. Approximate
 (uncompressed) sizes:
 
-- Dictionary (NAIST-JDIC): ~100–110 MB
-- Mei voice: ~2.2 MB
-- CLI binary: ~0.7 MB
+- Dictionary: ~100 MB
+- Mei voice: ~2 MB
+- CLI binary: ~1 MB
 
 If that’s too large you can avoid bundling at compile time and provision assets
 separately (rootfs overlay, `/data`, OTA, etc.):
@@ -182,21 +182,22 @@ library.
 
 ## Third-party components & licenses
 
-This package does not redistribute third-party assets by default. At compile
-time it may download and build:
+This package does not redistribute third-party assets by default.  
+At compile time it may download and build:
 
-- **Open JTalk 1.11** — Modified BSD (BSD 3-Clause)  
+- **Open JTalk 1.11** — BSD-3-Clause  
   Source: http://open-jtalk.sourceforge.net/
 
-- **HTS Engine API 1.10** — Modified BSD (BSD 3-Clause)  
+- **HTS Engine API 1.10** — BSD-3-Clause  
   Source: http://hts-engine.sourceforge.net/
 
 - **MeCab 0.996** — tri-licensed (GPL / LGPL / BSD); this project uses the BSD terms  
   Source: https://taku910.github.io/mecab/
 
-- **Open JTalk Dictionary (NAIST-JDIC UTF-8) 1.11** — BSD-style by NAIST  
+- **Open JTalk Dictionary 1.11** — UTF-8 dictionary package distributed with Open JTalk  
   Source: https://sourceforge.net/projects/open-jtalk/files/Dictionary/
 
-- **HTS Voice “Mei” (MMDAgent_Example 1.8)** — CC BY 3.0  
+- **HTS Voice “Mei” (MMDAgent Example 1.8)** — CC BY 3.0  
   Source: https://sourceforge.net/projects/mmdagent/files/MMDAgent_Example/  
   Attribution: “HTS Voice ‘Mei’ © Nagoya Institute of Technology, licensed CC BY 3.0.”
+
