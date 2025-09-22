@@ -155,9 +155,9 @@ OpenJTalk.say("こんにちは")
 Bundling the full dictionary + voice + binary increases firmware size. Approximate
 (uncompressed) sizes:
 
-- Dictionary: ~100 MB
-- Mei voice: ~2 MB
-- CLI binary: ~1 MB
+- Dictionary: ~103 MB
+- Mei voice: ~2.2 MB
+- CLI binary: ~2.4 MB
 
 If that’s too large you can avoid bundling at compile time and provision assets
 separately (rootfs overlay, `/data`, OTA, etc.):
