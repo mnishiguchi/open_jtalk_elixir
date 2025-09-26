@@ -12,7 +12,7 @@ VENDOR="$ROOT_DIR/vendor"
 MODE="${1:-all}" # src | assets | all
 
 ensure_tools mkdir curl tar unzip
-mkdir -p "$VENDOR" "$ROOT_DIR/priv/dic" "$ROOT_DIR/priv/voices"
+mkdir -p "$VENDOR" "$VENDOR/config" "$ROOT_DIR/priv/dic" "$ROOT_DIR/priv/voices"
 
 # URLs
 OPENJTALK_URL="https://sourceforge.net/projects/open-jtalk/files/Open%20JTalk/open_jtalk-1.11/open_jtalk-1.11.tar.gz/download"
@@ -46,11 +46,14 @@ if [[ "$MODE" == "src" || "$MODE" == "all" ]]; then
   extract_tgz "$VENDOR/hts_engine_API-1.10.tar.gz" "$VENDOR/hts_engine"
   extract_tgz "$VENDOR/mecab-0.996.tar.gz" "$VENDOR/mecab"
 
-  # Also fetch modern config.sub / config.guess into vendor/ so configure scripts
-  # have up-to-date canonicalizers for modern triplets (Raspberry Pi etc.)
-  dl 'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub' "$VENDOR/config.sub"
-  dl 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess' "$VENDOR/config.guess"
-  chmod +x "$VENDOR/config.sub" "$VENDOR/config.guess"
+  # Fetch modern config.sub / config.guess from Spack's gnuconfig mirror
+  # Optional: pin to a specific revision via GNUCONFIG_REF=<commit-sha> (default: master)
+  GNUCONFIG_REF="${GNUCONFIG_REF:-master}"
+  CONFIG_SUB_URL="https://raw.githubusercontent.com/spack/gnuconfig/${GNUCONFIG_REF}/config.sub"
+  CONFIG_GUESS_URL="https://raw.githubusercontent.com/spack/gnuconfig/${GNUCONFIG_REF}/config.guess"
+  dl "$CONFIG_SUB_URL"   "$VENDOR/config/config.sub"
+  dl "$CONFIG_GUESS_URL" "$VENDOR/config/config.guess"
+  chmod +x "$VENDOR/config/config.sub" "$VENDOR/config/config.guess"
 fi
 
 if [[ "$MODE" == "assets" || "$MODE" == "all" ]]; then
