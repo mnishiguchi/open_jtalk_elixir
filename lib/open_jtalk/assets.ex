@@ -5,7 +5,7 @@ defmodule OpenJTalk.Assets do
 
   Resolution order for each asset:
 
-    1. Environment variables (`OPENJTALK_CLI`, `OPENJTALK_DIC_DIR`, `OPENJTALK_VOICE`)
+    1. Environment variables (`OPENJTALK_CLI`, `OPENJTALK_DICTIONARY_DIR`, `OPENJTALK_VOICE`)
     2. Files bundled under this app’s `priv/` directory
     3. Common system locations (Homebrew, `/usr/*`, etc.)
 
@@ -15,7 +15,7 @@ defmodule OpenJTalk.Assets do
 
   # Resolve priv paths at runtime (don’t bake build-host paths into the BEAM)
   defp priv_bin, do: Application.app_dir(:open_jtalk_elixir, "priv/bin/open_jtalk")
-  defp priv_dic_root, do: Application.app_dir(:open_jtalk_elixir, "priv/dic")
+  defp priv_dictionary_root, do: Application.app_dir(:open_jtalk_elixir, "priv/dictionary")
   defp priv_voice_dir, do: Application.app_dir(:open_jtalk_elixir, "priv/voices")
 
   @doc """
@@ -47,25 +47,27 @@ defmodule OpenJTalk.Assets do
   @doc """
   Resolve the dictionary directory that contains `sys.dic`.
 
-  If `path` is `nil`, consult env (`OPENJTALK_DIC_DIR`), then `priv/`, then
+  If `path` is `nil`, consult env (`OPENJTALK_DICTIONARY_DIR`), then `priv/`, then
   system locations. If a `path` is provided, it must contain `sys.dic`.
   """
   @spec resolve_dictionary(nil | Path.t()) :: {:ok, Path.t()} | {:error, term()}
   def resolve_dictionary(nil) do
-    # Allow OPENJTALK_DIC_DIR or priv/dic/** with sys.dic
-    case :persistent_term.get({__MODULE__, :dic}, :unknown) do
+    # Allow OPENJTALK_DICTIONARY_DIR or priv/dictionary/** with sys.dic
+    case :persistent_term.get({__MODULE__, :dictionary}, :unknown) do
       :unknown ->
-        env = System.get_env("OPENJTALK_DIC_DIR")
+        env = System.get_env("OPENJTALK_DICTIONARY_DIR")
 
         dic =
           cond do
             is_binary(env) and File.exists?(Path.join(env, "sys.dic")) -> env
-            path = find_sysdic_under(priv_dic_root()) -> path
+            path = find_sysdic_under(priv_dictionary_root()) -> path
             path = find_system_naist_jdic() -> path
             true -> nil
           end
 
-        if dic, do: put(:dic, dic), else: {:error, {:dictionary_missing, priv_dic_root()}}
+        if dic,
+          do: put(:dictionary, dic),
+          else: {:error, {:dictionary_missing, priv_dictionary_root()}}
 
       path when is_binary(path) ->
         {:ok, path}
@@ -114,7 +116,7 @@ defmodule OpenJTalk.Assets do
   """
   @spec reset_cache() :: :ok
   def reset_cache() do
-    for k <- [:bin, :dic, :voice], do: :persistent_term.erase({__MODULE__, k})
+    for k <- [:bin, :dictionary, :voice], do: :persistent_term.erase({__MODULE__, k})
     :ok
   end
 
@@ -125,7 +127,7 @@ defmodule OpenJTalk.Assets do
     {:ok, val}
   end
 
-  # also accept sys.dic directly under root (priv/dic/sys.dic)
+  # also accept sys.dic directly under root (priv/dictionary/sys.dic)
   defp find_sysdic_under(root) do
     try do
       cond do

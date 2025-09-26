@@ -1,22 +1,35 @@
-# elixir_make guard
+# Open JTalk Elixir – Makefile
+#
+# Why this layout:
+# - Keep extracted vendor trees under _build so switching host/target is clean.
+#   Autotools writes host-specific junk in source trees; confining them to _build
+#   lets `mix clean`/`rm -rf _build` give a true fresh start.
+# - Delegate extraction + triplet guarding to the build script for simplicity.
+#
 ifeq ($(MIX_COMPILE_PATH),)
   $(error MIX_COMPILE_PATH should be set by elixir_make)
 endif
 
 PRIV_DIR   := $(abspath $(MIX_COMPILE_PATH)/../priv)
 OBJ_DIR    := $(abspath $(MIX_COMPILE_PATH)/../obj)
+OBJ_VENDOR := $(abspath $(OBJ_DIR)/vendor)
 SCRIPT_DIR := $(abspath $(CURDIR)/scripts)
 
-# Vendor locations
-MECAB_SRC := vendor/mecab/mecab-0.996
-HTS_SRC   := vendor/hts_engine/hts_engine_API-1.10
-OJT1      := vendor/open_jtalk/open_jtalk-1.11
-OJT2      := vendor/open_jtalk-1.11
+# Pinned source archives committed in the repo (reproducible builds)
+MECAB_TGZ := vendor/mecab-0.996.tar.gz
+HTS_TGZ   := vendor/hts_engine_API-1.10.tar.gz
+OJT_TGZ   := vendor/open_jtalk-1.11.tar.gz
 
+# Fixed extracted source locations (we assume the top-level dir names)
+MECAB_SRC := $(OBJ_VENDOR)/mecab/mecab-0.996
+HTS_SRC   := $(OBJ_VENDOR)/hts_engine/hts_engine_API-1.10
+OJT_SRC   := $(OBJ_VENDOR)/open_jtalk/open_jtalk-1.11
+
+# Assets (dictionary + one voice for out-of-the-box usage)
 DIC_TGZ := vendor/open_jtalk_dic_utf_8-1.11.tar.gz
 MEI_ZIP := vendor/MMDAgent_Example-1.8.zip
 
-# Toolchain
+# Toolchain (honor CROSSCOMPILE if provided)
 CROSSCOMPILE ?=
 CC     ?= $(if $(CROSSCOMPILE),$(CROSSCOMPILE)-gcc,gcc)
 CXX    ?= $(if $(CROSSCOMPILE),$(CROSSCOMPILE)-g++,g++)
@@ -24,7 +37,7 @@ AR     ?= $(if $(CROSSCOMPILE),$(CROSSCOMPILE)-ar,ar)
 RANLIB ?= $(if $(CROSSCOMPILE),$(CROSSCOMPILE)-ranlib,ranlib)
 STRIP  ?= $(if $(CROSSCOMPILE),$(CROSSCOMPILE)-strip,strip)
 
-# Derive CROSSCOMPILE from CC if needed
+# Convenience: derive CROSSCOMPILE from CC when users pass e.g. aarch64-linux-gnu-gcc
 CC_BASENAME := $(notdir $(CC))
 CC_PREFIX   := $(patsubst %-gcc,%,$(CC_BASENAME))
 ifeq ($(strip $(CROSSCOMPILE)),)
@@ -37,128 +50,107 @@ endif
 HOST_RAW  := $(shell $(CC) -dumpmachine 2>/dev/null)
 HOST_NORM := $(shell printf '%s' '$(HOST_RAW)' | sed -E 's/-nerves-/-unknown-/')
 
-# Per-triplet output
-STACK_PREFIX := $(abspath $(OBJ_DIR)/stack-$(HOST_NORM))
-OJT_PREFIX   := $(abspath $(OBJ_DIR)/open_jtalk-$(HOST_NORM))
+# Per-triplet output roots
+OJT_DEPS_PREFIX := $(abspath $(OBJ_DIR)/deps-$(HOST_NORM))
+OJT_PREFIX      := $(abspath $(OBJ_DIR)/open_jtalk-$(HOST_NORM))
 
-# Flags
-DEFAULT_CPPFLAGS := -I$(STACK_PREFIX)/include
+# Include/lib flags; EXTRA_* are passthrough so users can customize.
+DEFAULT_CPPFLAGS := -I$(OJT_DEPS_PREFIX)/include
 EXTRA_CPPFLAGS ?= $(DEFAULT_CPPFLAGS)
 
-# Host OS name (for RPATH flags)
 UNAME_S := $(shell uname -s)
 
-# OPENJTALK_FULL_STATIC defaults to 1 when MIX_TARGET is set (Nerves), otherwise 0.
-# Users can still override by exporting the env var.
+# Nerves default: static on target, dynamic on host/CI
 OPENJTALK_FULL_STATIC ?= $(if $(strip $(MIX_TARGET)),1,0)
 
-# Disallow static for *darwin* targets (static linking not supported there).
+# Darwin can’t fully static-link these deps—fail early if asked to.
 ifneq (,$(findstring darwin,$(HOST_NORM)))
   ifeq ($(OPENJTALK_FULL_STATIC),1)
     $(error OPENJTALK_FULL_STATIC=1 is not supported for darwin targets)
   endif
 endif
 
+# rpath so the CLI finds our priv/lib at runtime without LD_LIBRARY_PATH
 ifeq ($(UNAME_S),Darwin)
-  # macOS uses @loader_path for rpath
   RPATH_FLAGS = -Wl,-rpath,@loader_path/../lib
 else
-  # Linux/BSD: $ORIGIN + mark origin
   RPATH_FLAGS = -Wl,-rpath,'$$ORIGIN/../lib' -Wl,-z,origin
 endif
 
+# Linkage mode (static vs dynamic)
 ifeq ($(OPENJTALK_FULL_STATIC),1)
-  DEFAULT_LDFLAGS := -L$(STACK_PREFIX)/lib -static -static-libgcc -static-libstdc++
+  DEFAULT_LDFLAGS := -L$(OJT_DEPS_PREFIX)/lib -static -static-libgcc -static-libstdc++
 else
-  DEFAULT_LDFLAGS := -L$(STACK_PREFIX)/lib $(RPATH_FLAGS)
+  DEFAULT_LDFLAGS := -L$(OJT_DEPS_PREFIX)/lib $(RPATH_FLAGS)
 endif
 EXTRA_LDFLAGS ?= $(DEFAULT_LDFLAGS)
 
-# Whether to bundle dictionary/voices into priv/ (1=yes, 0=no).
-# Default ON for an “it just works” experience; CI/users can opt out via env.
+# Bundle dictionary/voice into priv by default so tests & examples “just work”.
 OPENJTALK_BUNDLE_ASSETS ?= 1
 
-# config.sub: prefer env CONFIG_SUB -> repo-local -> vendor -> automake -> system
-ifneq ($(wildcard $(CONFIG_SUB)),)
-  CONFIG_SUB := $(CONFIG_SUB)
-else ifneq ($(wildcard $(CURDIR)/config.sub),)
-  CONFIG_SUB := $(CURDIR)/config.sub
-else ifneq ($(wildcard $(CURDIR)/vendor/config.sub),)
-  CONFIG_SUB := $(CURDIR)/vendor/config.sub
-else
-  CONFIG_SUB := $(shell automake --print-libdir 2>/dev/null)/config.sub
-  ifeq ($(wildcard $(CONFIG_SUB)),)
-    CONFIG_SUB := /usr/share/misc/config.sub
-  endif
-endif
+# Use the repo-pinned GNU config scripts by default; allow override via env.
+CONFIG_SUB ?= $(CURDIR)/vendor/config/config.sub
 
 # ------------------------------------------------------------------------------
 # Targets
 # ------------------------------------------------------------------------------
-.PHONY: all dic voice ensure_src ensure_assets clean distclean show-config-sub
+.PHONY: all dictionary voice clean distclean show-config-sub
 
 ifeq ($(OPENJTALK_BUNDLE_ASSETS),1)
-all: $(PRIV_DIR)/bin/open_jtalk $(PRIV_DIR)/dic/sys.dic $(PRIV_DIR)/voices/mei_normal.htsvoice
+all: $(PRIV_DIR)/bin/open_jtalk $(PRIV_DIR)/dictionary/sys.dic $(PRIV_DIR)/voices/mei_normal.htsvoice
 else
 all: $(PRIV_DIR)/bin/open_jtalk
 endif
 
-dic:   $(PRIV_DIR)/dic/sys.dic
-voice: $(PRIV_DIR)/voices/mei_normal.htsvoice
-
-# Fetchers (idempotent)
-ensure_src:
-	+@ROOT_DIR="$(CURDIR)" /usr/bin/env bash "$(SCRIPT_DIR)/fetch_sources.sh" src
-
-ifeq ($(OPENJTALK_BUNDLE_ASSETS),1)
-ensure_assets:
-	+@ROOT_DIR="$(CURDIR)" /usr/bin/env bash "$(SCRIPT_DIR)/fetch_sources.sh" assets
-else
-ensure_assets:
-	@echo "Skipping asset download (OPENJTALK_BUNDLE_ASSETS=0)"
-endif
+dictionary: $(PRIV_DIR)/dictionary/sys.dic
+voice:      $(PRIV_DIR)/voices/mei_normal.htsvoice
 
 show-config-sub:
 	@printf "CONFIG_SUB = %s\n" "$(CONFIG_SUB)"
 
-# Build stack and open_jtalk directly (no stamp)
-$(PRIV_DIR)/bin/open_jtalk: | ensure_src $(OBJ_DIR) $(PRIV_DIR)/bin $(PRIV_DIR)/lib
-	+@OJT_DIR=$$( [ -d "$(OJT1)" ] && echo "$(OJT1)" || echo "$(OJT2)" ); \
-	  echo "Building stack and Open JTalk (OJT_DIR=$$OJT_DIR)"; \
-	  MECAB_SRC="$(MECAB_SRC)" HTS_SRC="$(HTS_SRC)" OJT_DIR="$$OJT_DIR" \
-	  STACK_PREFIX="$(STACK_PREFIX)" OJT_PREFIX="$(OJT_PREFIX)" HOST="$(HOST_NORM)" \
+# Build everything. The script handles:
+# - triplet guard (purges obj on host change)
+# - vendor extraction
+# - dependency + open_jtalk build
+$(PRIV_DIR)/bin/open_jtalk: | $(OBJ_DIR) $(PRIV_DIR)/bin $(PRIV_DIR)/lib
+	+@echo "Building Open JTalk"; \
+	  OBJ_DIR="$(OBJ_DIR)" OBJ_VENDOR="$(OBJ_VENDOR)" \
+	  MECAB_TGZ="$(MECAB_TGZ)" HTS_TGZ="$(HTS_TGZ)" OJT_TGZ="$(OJT_TGZ)" \
+	  MECAB_SRC="$(MECAB_SRC)" HTS_SRC="$(HTS_SRC)" OJT_SRC="$(OJT_SRC)" \
+	  OJT_DEPS_PREFIX="$(OJT_DEPS_PREFIX)" OJT_PREFIX="$(OJT_PREFIX)" HOST="$(HOST_NORM)" \
 	  CC="$(CC)" CXX="$(CXX)" AR="$(AR)" RANLIB="$(RANLIB)" STRIP_BIN="$(STRIP)" \
 	  CONFIG_SUB="$(CONFIG_SUB)" EXTRA_CPPFLAGS="$(EXTRA_CPPFLAGS)" EXTRA_LDFLAGS="$(EXTRA_LDFLAGS)" \
 	  DEST_BIN="$(PRIV_DIR)/bin/open_jtalk" \
-	  /usr/bin/env bash "$(SCRIPT_DIR)/build_stack_and_openjtalk.sh"
+	  /usr/bin/env bash "$(SCRIPT_DIR)/build_openjtalk.sh"
 
-# Dictionary & Voice
-$(PRIV_DIR)/dic/sys.dic: | ensure_assets $(PRIV_DIR)/dic
-	+@DIC_TGZ="$(DIC_TGZ)" DEST_DIR="$(PRIV_DIR)/dic" \
-	  /usr/bin/env bash "$(SCRIPT_DIR)/install_dic.sh"
+# Assets: install pinned dictionary & one voice
+$(PRIV_DIR)/dictionary/sys.dic: | $(PRIV_DIR)/dictionary
+	+@DIC_TGZ="$(DIC_TGZ)" DEST_DIR="$(PRIV_DIR)/dictionary" \
+	  /usr/bin/env bash "$(SCRIPT_DIR)/install_dictionary.sh"
 
-$(PRIV_DIR)/voices/mei_normal.htsvoice: | ensure_assets $(PRIV_DIR)/voices
+$(PRIV_DIR)/voices/mei_normal.htsvoice: | $(PRIV_DIR)/voices
 	+@VOICE_ZIP="$(MEI_ZIP)" DEST_VOICE="$(PRIV_DIR)/voices/mei_normal.htsvoice" \
 	  /usr/bin/env bash "$(SCRIPT_DIR)/install_voice.sh"
 
 # Dirs
 $(OBJ_DIR) \
-$(STACK_PREFIX) \
+$(OJT_DEPS_PREFIX) \
 $(PRIV_DIR) \
 $(PRIV_DIR)/bin \
 $(PRIV_DIR)/lib \
-$(PRIV_DIR)/dic \
+$(PRIV_DIR)/dictionary \
 $(PRIV_DIR)/voices:
 	mkdir -p "$@"
 
-# Clean
+# Clean only current target’s build artefacts
 clean:
 	rm -rf "$(PRIV_DIR)/bin/open_jtalk" "$(PRIV_DIR)/lib" "$(OBJ_DIR)"
 
+# Only remove assets (archives remain)
 distclean: clean
-	rm -rf "vendor" "$(PRIV_DIR)/dic" "$(PRIV_DIR)/voices"
+	rm -rf "$(PRIV_DIR)/dictionary" "$(PRIV_DIR)/voices"
 
-# Hint for local builds
+# Friendly hint if building locally without a cross toolchain.
 ifeq ($(strip $(CROSSCOMPILE)),)
   $(warning No cross-compiler detected. Building native code in test mode.)
 endif

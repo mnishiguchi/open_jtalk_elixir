@@ -52,29 +52,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential curl tar unzip automake
-      # macOS: avoid Homebrew; provide a tiny 'install -D' shim for BSD install
-      - name: Provide install -D shim (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          mkdir -p "$HOME/bin"
-          cat > "$HOME/bin/install" <<'SH'
-          #!/usr/bin/env bash
-          set -euo pipefail
-          # Minimal shim to support `install -D SRC DEST` on BSD install.
-          args=("$@")
-          dest="${@: -1}"
-          for i in "${!args[@]}"; do
-            if [[ "${args[$i]}" == "-D" ]]; then
-              unset 'args[$i]'
-              mkdir -p "$(dirname "$dest")"
-              break
-            fi
-          done
-          exec /usr/bin/install "${args[@]}"
-          SH
-          chmod +x "$HOME/bin/install"
-          echo "$HOME/bin" >> "$GITHUB_PATH"
       - uses: erlef/setup-beam@v1
         with:
           elixir-version: '1.18'
@@ -97,3 +74,4 @@ jobs:
       - run: mix deps.get
       - run: mix compile
       - run: mix test
+
