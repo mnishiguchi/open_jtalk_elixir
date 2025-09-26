@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Common helpers shared by all build/fetch/install scripts.
+# Shared helpers
 #
 set -euo pipefail
 
@@ -16,35 +16,33 @@ have() { command -v "$1" >/dev/null 2>&1; }
 ensure_tools() {
   local missing=()
   for t in "$@"; do have "$t" || missing+=("$t"); done
-  if ((${#missing[@]})); then
-    die "Missing tools: ${missing[*]} (please install them)"
-  fi
+  ((${#missing[@]} == 0)) || die "Missing tools: ${missing[*]}"
 }
 
+# Inject a modern config.sub (+config.guess if available) into a source tree.
 copy_config_sub_if_present() {
   local src="${1:-}" dst="${2:-}"
-  # Require: src exists and dst is a directory.
   [[ -n "$src" && -f "$src" && -n "$dst" && -d "$dst" ]] || return 0
 
-  log "Copying $(basename "$src") to $dst/config.sub (and config.guess if present)."
+  log "Copying $(basename "$src") into $dst (and config/)"
   cp -f "$src" "$dst/config.sub" || true
+  mkdir -p "$dst/config"
+  cp -f "$src" "$dst/config/config.sub" || true
 
-  # Also copy into $dst/config/config.sub which some projects expect.
-  if [[ -d "$dst/config" ]]; then
-    log "Also copying $(basename "$src") to $dst/config/config.sub"
-    cp -f "$src" "$dst/config/config.sub" || true
-  else
-    # create config/ and copy (safer for projects that reference config/config.sub)
-    mkdir -p "$dst/config"
-    cp -f "$src" "$dst/config/config.sub" || true
-  fi
-
-  # If there is a config.guess sibling next to the provided config.sub, copy it too.
-  local guess="$(dirname "$src")/config.guess"
+  local guess
+  guess="$(dirname "$src")/config.guess"
   if [[ -f "$guess" ]]; then
-    log "Copying config.guess alongside config.sub"
     cp -f "$guess" "$dst/config.guess" || true
     cp -f "$guess" "$dst/config/config.guess" || true
   fi
 }
 
+# Best-effort cleanup of common Autotools outputs.
+clean_autotools_artifacts() {
+  local dir="$1"
+  [[ -d "$dir" ]] || return 0
+  if [[ -f "$dir/Makefile" ]]; then
+    make -C "$dir" distclean || make -C "$dir" clean || true
+  fi
+  find "$dir" -type f \( -name '*.o' -o -name '*.lo' -o -name '*.la' \) -delete || true
+}

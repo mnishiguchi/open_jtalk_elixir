@@ -32,7 +32,7 @@ defmodule OpenJTalk.Info do
 
     dic_entry =
       case Assets.resolve_dictionary(nil) do
-        {:ok, dic} -> %{path: dic, source: classify_source(:dic, dic)}
+        {:ok, dic} -> %{path: dic, source: classify_source(:dictionary, dic)}
         {:error, _} -> %{path: nil, source: :none}
       end
 
@@ -62,9 +62,9 @@ defmodule OpenJTalk.Info do
     end
   end
 
-  defp classify_source(:dic, path) do
-    env = System.get_env("OPENJTALK_DIC_DIR")
-    priv_dic_root = Application.app_dir(:open_jtalk_elixir, "priv/dic")
+  defp classify_source(:dictionary, path) do
+    env = System.get_env("OPENJTALK_DICTIONARY_DIR")
+    priv_dic_root = Application.app_dir(:open_jtalk_elixir, "priv/dictionary")
     path_expanded = Path.expand(path)
 
     cond do
@@ -86,3 +86,4 @@ defmodule OpenJTalk.Info do
     end
   end
 end
+
