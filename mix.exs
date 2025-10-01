@@ -1,7 +1,7 @@
 defmodule OpenJtalkElixir.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.2.1"
   @source_url "https://github.com/mnishiguchi/open_jtalk_elixir"
 
   def project do
@@ -62,6 +62,7 @@ defmodule OpenJtalkElixir.MixProject do
         "scripts",
         "Makefile",
         "mix.exs",
+        "vendor",
         "CHANGELOG*",
         "README*",
         "LICENSE*"

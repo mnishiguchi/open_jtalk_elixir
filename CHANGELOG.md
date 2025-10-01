@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.2.1
+
+No user-visible or API changes. All updates are internal/maintenance to make builds more robust.
+
+### Build system
+
+- Unified script now handles vendor extraction and triplet guarding.
+- Triplet change auto-purges `_build/**/obj` to avoid cross-contamination.
+- Inject repo-local `config.sub`/`config.guess` into vendor trees.
+- Replace `mecab/Makefile.in` stub with a tiny `configure` patch (fixes `config.status` with external MeCab).
+- Streamlined installers:
+  - Dictionary: extract to `priv/dictionary` (unwrap `open_jtalk_dic_*` if present).
+  - Voice: stream `mei_normal.htsvoice` directly from the zip.
+- Centralized RPATH: `$ORIGIN/../lib` (Linux), `@loader_path/../lib` (macOS).
+
 ## v0.2.0
 
 ### Highlights
