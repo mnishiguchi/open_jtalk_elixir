@@ -18,28 +18,14 @@
 #
 set -euo pipefail
 
-log() { printf '%s\n' "[$(basename "$0")] $*" >&2; }
-
-die() {
-  log "ERROR: $*"
-  exit 1
-}
-
-have() { command -v "$1" >/dev/null 2>&1; }
-
-ensure_tools() {
-  local missing=()
-  for t in "$@"; do
-    if ! have "$t"; then
-      missing+=("$t")
-    fi
-  done
-  if ((${#missing[@]})); then
-    die "Missing tools: ${missing[*]}"
-  fi
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$SCRIPT_DIR/common.sh"
 
 # Inject newer GNU config scripts into given source dir (no-op if not provided).
+# Why: Autotools shipped with these projects is old; modern triplets
+# (e.g. aarch64, *-unknown-* canonicalization) need newer scripts.
+# Safe to no-op if the caller didn’t pass CONFIG_SUB or the dst is absent.
 copy_config_sub_if_present() {
   local src="${1:-}" dst="${2:-}"
   [[ -n "$src" && -f "$src" && -n "$dst" && -d "$dst" ]] || return 0
@@ -56,6 +42,7 @@ copy_config_sub_if_present() {
 }
 
 # Clean common Autotools outputs so re-configure doesn’t reuse incompatible objects.
+# Useful when re-configuring the same source tree for a different host triplet.
 clean_autotools_artifacts() {
   local dir="$1"
   [[ -d "$dir" ]] || return 0

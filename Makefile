@@ -92,6 +92,32 @@ OPENJTALK_BUNDLE_ASSETS ?= 1
 CONFIG_SUB ?= $(CURDIR)/vendor/config/config.sub
 
 # ------------------------------------------------------------------------------
+# Minimal vendor readiness check (used as an order-only prerequisite)
+# ------------------------------------------------------------------------------
+VENDOR_DIR := $(CURDIR)/vendor
+VENDOR_PAYLOADS := \
+  $(VENDOR_DIR)/config/config.sub \
+  $(VENDOR_DIR)/config/config.guess \
+  $(VENDOR_DIR)/mecab-0.996.tar.gz \
+  $(VENDOR_DIR)/hts_engine_API-1.10.tar.gz \
+  $(VENDOR_DIR)/open_jtalk-1.11.tar.gz \
+  $(VENDOR_DIR)/open_jtalk_dic_utf_8-1.11.tar.gz \
+  $(VENDOR_DIR)/MMDAgent_Example-1.8.zip
+
+.PHONY: vendor_ready
+vendor_ready:
+	@missing=; \
+	for f in $(VENDOR_PAYLOADS); do \
+	  if [ ! -f $$f ]; then echo "missing: $$f"; missing=1; fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+	  echo "Preparing vendor payloads..."; \
+	  /usr/bin/env bash "$(SCRIPT_DIR)/prepare_vendor.sh"; \
+	else \
+	  echo "vendor looks ready."; \
+	fi
+
+# ------------------------------------------------------------------------------
 # Targets
 # ------------------------------------------------------------------------------
 .PHONY: all dictionary voice clean distclean show-config-sub
@@ -112,7 +138,7 @@ show-config-sub:
 # - triplet guard (purges obj on host change)
 # - vendor extraction
 # - dependency + open_jtalk build
-$(PRIV_DIR)/bin/open_jtalk: | $(OBJ_DIR) $(PRIV_DIR)/bin $(PRIV_DIR)/lib
+$(PRIV_DIR)/bin/open_jtalk: | $(OBJ_DIR) $(PRIV_DIR)/bin $(PRIV_DIR)/lib vendor_ready
 	+@echo "Building Open JTalk"; \
 	  OBJ_DIR="$(OBJ_DIR)" OBJ_VENDOR="$(OBJ_VENDOR)" \
 	  MECAB_TGZ="$(MECAB_TGZ)" HTS_TGZ="$(HTS_TGZ)" OJT_TGZ="$(OJT_TGZ)" \
@@ -124,11 +150,11 @@ $(PRIV_DIR)/bin/open_jtalk: | $(OBJ_DIR) $(PRIV_DIR)/bin $(PRIV_DIR)/lib
 	  /usr/bin/env bash "$(SCRIPT_DIR)/build_openjtalk.sh"
 
 # Assets: install pinned dictionary & one voice
-$(PRIV_DIR)/dictionary/sys.dic: | $(PRIV_DIR)/dictionary
+$(PRIV_DIR)/dictionary/sys.dic: | vendor_ready $(PRIV_DIR)/dictionary
 	+@DIC_TGZ="$(DIC_TGZ)" DEST_DIR="$(PRIV_DIR)/dictionary" \
 	  /usr/bin/env bash "$(SCRIPT_DIR)/install_dictionary.sh"
 
-$(PRIV_DIR)/voices/mei_normal.htsvoice: | $(PRIV_DIR)/voices
+$(PRIV_DIR)/voices/mei_normal.htsvoice: | vendor_ready $(PRIV_DIR)/voices
 	+@VOICE_ZIP="$(MEI_ZIP)" DEST_VOICE="$(PRIV_DIR)/voices/mei_normal.htsvoice" \
 	  /usr/bin/env bash "$(SCRIPT_DIR)/install_voice.sh"
 
