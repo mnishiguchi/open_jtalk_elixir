@@ -75,3 +75,56 @@ jobs:
       - run: mix compile
       - run: mix test
 
+  cross-rpi4:
+    name: cross rpi4
+    runs-on: ubuntu-24.04
+    env:
+      MIX_ENV: test
+      OPENJTALK_BUNDLE_ASSETS: "0"
+      OPENJTALK_FULL_STATIC: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cross toolchain & build utils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential automake curl tar unzip file \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18'
+          otp-version: '27'
+      - name: Cache mix
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mix
+            deps
+            _build
+          key: mix-${{ runner.os }}-armhf-${{ hashFiles('**/mix.lock') }}
+      - name: Cache vendor downloads
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: vendor-${{ runner.os }}-armhf-openjtalk-${{ hashFiles('VENDOR') }}
+      - run: mix local.hex --force
+      - run: mix local.rebar --force
+      - run: mix deps.get
+      - name: Compile for ARMv7 (rpi4-like)
+        env:
+          CC: arm-linux-gnueabihf-gcc
+          CXX: arm-linux-gnueabihf-g++
+          AR: arm-linux-gnueabihf-ar
+          RANLIB: arm-linux-gnueabihf-ranlib
+          STRIP: arm-linux-gnueabihf-strip
+        run: |
+          mix compile
+          # Show what the compiler thinks the host is (useful for logs)
+          arm-linux-gnueabihf-gcc -dumpmachine
+      - name: Verify binary is ARM
+        run: |
+          set -euo pipefail
+          BIN="$(find _build -type f -name open_jtalk -path '*/priv/bin/*' | head -n1)"
+          test -n "$BIN"
+          file "$BIN"
+          file "$BIN" | grep -Ei 'aarch64|ARM' >/dev/null
