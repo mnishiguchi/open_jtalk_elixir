@@ -21,31 +21,3 @@ open_jtalk_elixir-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
-
-# Don’t commit host binaries
-/**/priv/bin/
-/**/priv/lib/
-/obj
-*.o
-*.a
-*.so
-*.dylib
-*.dll
-
-# Large fetched assets
-/priv/dic/
-/priv/voices/
-
-# Vendor: ignore everything by default, but keep pinned canonicalizers
-/vendor/*
-!/vendor/config/
-/vendor/config/*
-!/vendor/config/config.sub
-!/vendor/config/config.guess
-
-# Keep pinned source archives
-!/vendor/open_jtalk-1.11.tar.gz
-!/vendor/hts_engine_API-1.10.tar.gz
-!/vendor/mecab-0.996.tar.gz
-!/vendor/open_jtalk_dic_utf_8-1.11.tar.gz
-!/vendor/MMDAgent_Example-1.8.zip
