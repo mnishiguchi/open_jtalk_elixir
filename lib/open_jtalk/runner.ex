@@ -6,27 +6,18 @@ defmodule OpenJTalk.Runner do
   # LD_LIBRARY_PATH is a fallback if users partially static-link.
   def run([bin | args], timeout_ms \\ 20_000) do
     env = [{"LC_ALL", "C"}] ++ ld_path_env()
-    task = Task.async(fn -> System.cmd(bin, args, env: env, stderr_to_stdout: true) end)
-
     timeout = normalize_timeout(timeout_ms)
 
-    case Task.yield(task, timeout) || Task.shutdown(task, :brutal_kill) do
-      {:ok, {out, 0}} -> {:ok, out}
-      {:ok, {out, status}} -> {:error, {:open_jtalk_exit, status, String.trim(out)}}
-      nil -> {:error, :timeout}
+    case MuonTrap.cmd(bin, args, env: env, stderr_to_stdout: true, timeout: timeout) do
+      {out, 0} -> {:ok, out}
+      {out, status} -> {:error, {:open_jtalk_exit, status, String.trim(out)}}
     end
   end
 
   def run_capture([bin | args], timeout_ms \\ 20_000) do
-    env = [{"LC_ALL", "C"}] ++ ld_path_env()
-    task = Task.async(fn -> System.cmd(bin, args, env: env, stderr_to_stdout: true) end)
-
-    timeout = normalize_timeout(timeout_ms)
-
-    case Task.yield(task, timeout) || Task.shutdown(task, :brutal_kill) do
-      {:ok, {bytes, 0}} -> {:ok, bytes}
-      {:ok, {out, status}} -> {:error, {:open_jtalk_exit, status, String.trim(out)}}
-      nil -> {:error, :timeout}
+    case run([bin | args], timeout_ms) do
+      {:ok, bytes} -> {:ok, bytes}
+      other -> other
     end
   end
 

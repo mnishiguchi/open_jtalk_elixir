@@ -40,6 +40,7 @@ defmodule OpenJtalkElixir.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:muontrap, "~> 1.6"},
       {:credo, "~> 1.7", only: [:lint], runtime: false},
       {:elixir_make, "~> 0.7", runtime: false},
       {:ex_doc, "~> 0.38", only: [:docs], runtime: false}
