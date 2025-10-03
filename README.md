@@ -9,8 +9,8 @@ Use Open JTalk from Elixir. This package builds a local `open_jtalk` CLI and,
 by default, bundles a UTF-8 dictionary and an HTS voice (you can disable this),
 exposing three convenient APIs:
 
-- `OpenJTalk.to_wav/2` — synthesize text to a WAV file
-- `OpenJTalk.to_binary/2` — synthesize and return WAV bytes
+- `OpenJTalk.to_wav_file/2` — synthesize text to a WAV file
+- `OpenJTalk.to_wav_binary/2` — synthesize and return WAV bytes
 - `OpenJTalk.say/2` — synthesize and play via a system audio player
 
 ## Install
@@ -77,7 +77,7 @@ All synthesis calls accept the same options (values are clamped):
 - `:voice` — path to a `.htsvoice` file (optional)
 - `:dictionary` — path to a directory containing `sys.dic` (optional)
 - `:timeout` — max runtime in ms (default `20_000`)
-- `:out` — output WAV path (only for `to_wav/2`)
+- `:out` — output WAV path (only for `to_wav_file/2`)
 
 <!-- MODULEDOC -->
 
@@ -97,8 +97,8 @@ The package resolves required assets in this order:
 
 ### Dictionary (`sys.dic`)
 
-- **Env:** `OPENJTALK_DIC_DIR` — directory containing `sys.dic`.
-- **Bundled:** `priv/dic/sys.dic` or any `priv/dic/**/sys.dic` (e.g. `naist-jdic`).
+- **Env:** `OPENJTALK_DICTIONARY_DIR` — directory containing `sys.dic`.
+- **Bundled:** `priv/dictionary/sys.dic` or any `priv/dictionary/**/sys.dic` (e.g. `naist-jdic`).
 - **System:** common locations such as `/var/lib/mecab/dic/open-jtalk/naist-jdic`,
   `/usr/lib/*/mecab/dic/open-jtalk/naist-jdic`, etc.
 
@@ -148,7 +148,7 @@ OpenJTalk.say("こんにちは")
 `aplay`. If your image does not include a player:
 
 - add one to the system image, or
-- use `OpenJTalk.to_wav/2` and play the WAV with your chosen mechanism.
+- use `OpenJTalk.to_wav_file/2` and play the WAV with your chosen mechanism.
 
 ### Firmware size notes
 
@@ -170,9 +170,9 @@ Then point the library to the provisioned assets (for example in
 `config/runtime.exs`):
 
 ```elixir
-System.put_env("OPENJTALK_CLI",     "/data/open_jtalk/bin/open_jtalk")
-System.put_env("OPENJTALK_DIC_DIR", "/data/open_jtalk/dic")
-System.put_env("OPENJTALK_VOICE",   "/data/open_jtalk/voices/mei_normal.htsvoice")
+System.put_env("OPENJTALK_CLI", "/data/open_jtalk/bin/open_jtalk")
+System.put_env("OPENJTALK_DICTIONARY_DIR", "/data/open_jtalk/dic")
+System.put_env("OPENJTALK_VOICE", "/data/open_jtalk/voices/mei_normal.htsvoice")
 
 OpenJTalk.Assets.reset_cache()
 ```

@@ -9,7 +9,7 @@ defmodule OpenJtalkElixir.MixProject do
       app: :open_jtalk_elixir,
       version: @version,
       description: "Use Open JTalk in Elixir",
-      elixir: "~> 1.13",
+      elixir: "~> 1.15",
       compilers: compilers(Mix.env()),
       make_targets: ["all"],
       make_clean: ["clean"],
@@ -17,8 +17,10 @@ defmodule OpenJtalkElixir.MixProject do
       deps: deps(),
       package: package(),
       docs: docs(),
+      dialyzer: dialyzer(),
       preferred_cli_env: %{
         credo: :lint,
+        dialyzer: :lint,
         docs: :docs,
         "hex.publish": :docs,
         "hex.build": :docs
@@ -42,8 +44,17 @@ defmodule OpenJtalkElixir.MixProject do
     [
       {:muontrap, "~> 1.6"},
       {:credo, "~> 1.7", only: [:lint], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:lint], runtime: false},
       {:elixir_make, "~> 0.7", runtime: false},
       {:ex_doc, "~> 0.38", only: [:docs], runtime: false}
+    ]
+  end
+
+  defp dialyzer() do
+    [
+      plt_core_path: "_build/lint",
+      plt_file: {:no_warn, "_build/lint/dialyzer.plt"},
+      flags: [:missing_return, :extra_return, :unmatched_returns, :error_handling, :underspecs]
     ]
   end
 
