@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.2.2
+
+### Highlights
+
+- More robust process execution: `OpenJTalk.Runner` now uses MuonTrap for spawning the `open_jtalk` CLI. This improves timeout handling and process cleanup (useful on Nerves and in supervision trees).
+
+### Changes
+
+- Replace `System.cmd/3` + manual Task/timeout with `MuonTrap.cmd/3` in `OpenJTalk.Runner`.
+- Add runtime dependency: `{:muontrap, "~> 1.6"}`.
+
+### Notes
+
+- No API changes. Existing calls (`OpenJTalk.to_wav/2`, `to_binary/2`, `say/2`) are unaffected.
+- Builds may compile a tiny native component from MuonTrap (handled automatically).
+- Recommended for Nerves users: better handling of timeouts and zombie prevention under constrained environments.
+
 ## v0.2.1
 
 No user-visible or API changes. All updates are internal/maintenance to make builds more robust.
