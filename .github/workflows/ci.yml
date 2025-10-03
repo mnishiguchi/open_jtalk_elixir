@@ -13,6 +13,8 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      MIX_ENV: lint
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
@@ -31,6 +33,11 @@ jobs:
       - run: mix local.rebar --force
       - run: mix deps.get
       - run: mix format --check-formatted
+      - run: mix compile
+      - run: mix dialyzer --format short
+      - name: Credo (warning only)
+        continue-on-error: true
+        run: mix credo --all --strict --format=oneline
 
   test:
     name: test (${{ matrix.os }})

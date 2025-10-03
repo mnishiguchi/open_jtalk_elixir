@@ -1,16 +1,11 @@
 defmodule OpenJTalk.Info do
-  @moduledoc """
-  Environment diagnostics for the local Open JTalk setup.
-  """
-
-  alias OpenJTalk.{Assets, Player}
+  @moduledoc false
+  # Environment diagnostics for the local Open JTalk setup.
 
   @typedoc "Origin tag for a resolved component."
   @type source :: :env | :bundled | :system | :none
-
   @typedoc "Uniform info entry for a discovered component."
   @type entry :: %{path: String.t() | nil, source: source()}
-
   @typedoc "Info map returned on success."
   @type info_map :: %{
           bin: entry(),
@@ -19,25 +14,23 @@ defmodule OpenJTalk.Info do
           audio_player: entry()
         }
 
-  @doc """
-  Returns a uniform view of the configured Open JTalk environment.
-  """
-  @spec info() :: {:ok, info_map()} | {:error, term}
+  @doc "Returns a uniform view of the configured Open JTalk environment."
+  @spec info() :: {:ok, info_map()}
   def info() do
     bin_entry =
-      case Assets.resolve_bin() do
+      case OpenJTalk.Assets.resolve_bin() do
         {:ok, bin} -> %{path: bin, source: classify_source(:bin, bin)}
         {:error, _} -> %{path: nil, source: :none}
       end
 
     dic_entry =
-      case Assets.resolve_dictionary(nil) do
+      case OpenJTalk.Assets.resolve_dictionary(nil) do
         {:ok, dic} -> %{path: dic, source: classify_source(:dictionary, dic)}
         {:error, _} -> %{path: nil, source: :none}
       end
 
     voice_entry =
-      case Assets.resolve_voice(nil) do
+      case OpenJTalk.Assets.resolve_voice(nil) do
         {:ok, voice} -> %{path: voice, source: classify_source(:voice, voice)}
         {:error, _} -> %{path: nil, source: :none}
       end
@@ -47,7 +40,7 @@ defmodule OpenJTalk.Info do
        bin: bin_entry,
        dictionary: dic_entry,
        voice: voice_entry,
-       audio_player: Player.info()
+       audio_player: OpenJTalk.Player.info()
      }}
   end
 

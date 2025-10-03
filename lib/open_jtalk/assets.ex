@@ -1,22 +1,19 @@
 defmodule OpenJTalk.Assets do
-  @moduledoc """
-  Resolve paths to the `open_jtalk` binary, dictionary (`sys.dic`), and voice
-  (`.htsvoice`) at runtime.
-
-  Resolution order for each asset:
-
-    1. Environment variables (`OPENJTALK_CLI`, `OPENJTALK_DICTIONARY_DIR`, `OPENJTALK_VOICE`)
-    2. Files bundled under this app’s `priv/` directory
-    3. Common system locations (Homebrew, `/usr/*`, etc.)
-
-  Results are cached in `:persistent_term`. Call `reset_cache/0` if your
-  environment changes at runtime (e.g., you replace files or tweak env vars).
-  """
+  @moduledoc false
+  # Resolve paths to the Open JTalk CLI, dictionary (`sys.dic`), and voice (`.htsvoice`).
+  # Resolution order:
+  #   1. Environment variables: `OPENJTALK_CLI`, `OPENJTALK_DICTIONARY_DIR`, `OPENJTALK_VOICE`
+  #   2. Bundled files under `priv/`
+  #   3. Common system locations (Homebrew, `/usr/*`, etc.)
+  #
+  # Results are cached in `:persistent_term`. Call `reset_cache/0` if the
+  # environment changes at runtime.
 
   # Resolve priv paths at runtime (don’t bake build-host paths into the BEAM)
-  defp priv_bin, do: Application.app_dir(:open_jtalk_elixir, "priv/bin/open_jtalk")
-  defp priv_dictionary_root, do: Application.app_dir(:open_jtalk_elixir, "priv/dictionary")
-  defp priv_voice_dir, do: Application.app_dir(:open_jtalk_elixir, "priv/voices")
+  # (Avoid compile-time interpolation of machine-specific paths.)
+  defp priv_bin(), do: Application.app_dir(:open_jtalk_elixir, "priv/bin/open_jtalk")
+  defp priv_dictionary_root(), do: Application.app_dir(:open_jtalk_elixir, "priv/dictionary")
+  defp priv_voice_dir(), do: Application.app_dir(:open_jtalk_elixir, "priv/voices")
 
   @doc """
   Resolve the `open_jtalk` CLI path.
@@ -52,7 +49,6 @@ defmodule OpenJTalk.Assets do
   """
   @spec resolve_dictionary(nil | Path.t()) :: {:ok, Path.t()} | {:error, term()}
   def resolve_dictionary(nil) do
-    # Allow OPENJTALK_DICTIONARY_DIR or priv/dictionary/** with sys.dic
     case :persistent_term.get({__MODULE__, :dictionary}, :unknown) do
       :unknown ->
         env = System.get_env("OPENJTALK_DICTIONARY_DIR")
@@ -120,37 +116,41 @@ defmodule OpenJTalk.Assets do
     :ok
   end
 
-  # ---- helpers -----------------------------------------------------------------
-
   defp put(key, val) do
     :persistent_term.put({__MODULE__, key}, val)
     {:ok, val}
   end
 
-  # also accept sys.dic directly under root (priv/dictionary/sys.dic)
+  # Keep this compile-guard-safe (no File.* in guards) and shallow for Credo.
   defp find_sysdic_under(root) do
-    try do
-      cond do
-        not File.dir?(root) ->
-          nil
+    cond do
+      dir_missing?(root) ->
+        nil
 
-        File.exists?(Path.join(root, "sys.dic")) ->
-          root
+      has_sys_dic?(root) ->
+        root
 
-        File.exists?(Path.join(root, "naist-jdic/sys.dic")) ->
-          Path.join(root, "naist-jdic")
+      has_naist_sys_dic?(root) ->
+        Path.join(root, "naist-jdic")
 
-        true ->
-          scan_subdirs_for_sysdic(root)
-      end
-    rescue
-      _ -> nil
+      true ->
+        ls_for_sysdic(root)
     end
   end
 
-  defp scan_subdirs_for_sysdic(root) do
-    root
-    |> File.ls!()
+  defp dir_missing?(root), do: not File.dir?(root)
+  defp has_sys_dic?(root), do: File.exists?(Path.join(root, "sys.dic"))
+  defp has_naist_sys_dic?(root), do: File.exists?(Path.join(root, "naist-jdic/sys.dic"))
+
+  defp ls_for_sysdic(root) do
+    case File.ls(root) do
+      {:ok, entries} -> find_first_sysdic_dir(root, entries)
+      {:error, _} -> nil
+    end
+  end
+
+  defp find_first_sysdic_dir(root, entries) do
+    entries
     |> Enum.map(&Path.join(root, &1))
     |> Enum.find(fn dir -> File.dir?(dir) and File.exists?(Path.join(dir, "sys.dic")) end)
   end
