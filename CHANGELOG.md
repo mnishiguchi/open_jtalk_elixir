@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.3.0
+
+### Breaking changes
+
+- Renamed functions for clarity:
+  - `OpenJTalk.to_wav/2` → `OpenJTalk.to_wav_file/2`
+  - `OpenJTalk.to_binary/2` → `OpenJTalk.to_wav_binary/2`
+
+### New
+
+- **WAV concatenation**
+  - `OpenJTalk.Wav.concat_binaries/1`
+  - `OpenJTalk.Wav.concat_files/1`
+
+- **Playback options**
+  - `:playback_mode` (`:auto | :stdin | :file`) for `say/2`, `play_wav_binary/2`, and `play_wav_file/2`
+  - `OpenJTalk.play_wav_binary/2` — play in-memory WAV bytes directly
+
+### Improvements
+
+- Safer, stricter option validation with `OpenJTalk.validate_options!/1`
+- Better error messages for invalid options and timeouts
+
+### Quick upgrade examples
+
+```elixir
+{:ok, path} = OpenJTalk.to_wav_file("こんにちは", out: "/tmp/x.wav")
+{:ok, wav} = OpenJTalk.to_wav_binary("こんにちは")
+:ok = OpenJTalk.say("こんにちは", playback_mode: :auto)
+{:ok, merged} = OpenJTalk.Wav.concat_binaries([a, b, c])
+```
+
 ## v0.2.2
 
 ### Highlights

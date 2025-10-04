@@ -22,7 +22,7 @@ Add the dependency to your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:open_jtalk_elixir, "~> 0.2"}
+    {:open_jtalk_elixir, "~> 0.3"}
   ]
 end
 ```
