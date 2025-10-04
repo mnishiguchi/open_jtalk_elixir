@@ -7,11 +7,13 @@
 
 Use Open JTalk from Elixir. This package builds a local `open_jtalk` CLI and,
 by default, bundles a UTF-8 dictionary and an HTS voice (you can disable this),
-exposing three convenient APIs:
+exposing convenient functions:
 
+- `OpenJTalk.say/2` — synthesize and play via a system audio player
 - `OpenJTalk.to_wav_file/2` — synthesize text to a WAV file
 - `OpenJTalk.to_wav_binary/2` — synthesize and return WAV bytes
-- `OpenJTalk.say/2` — synthesize and play via a system audio player
+- `OpenJTalk.Wav.concat_binaries/1` — merge multiple WAV binaries (same format)
+- `OpenJTalk.Wav.concat_files/1` — merge multiple WAV files from paths (same format)
 
 ## Install
 
@@ -78,6 +80,20 @@ All synthesis calls accept the same options (values are clamped):
 - `:dictionary` — path to a directory containing `sys.dic` (optional)
 - `:timeout` — max runtime in ms (default `20_000`)
 - `:out` — output WAV path (only for `to_wav_file/2`)
+
+### Concatenate WAVs
+
+You can combine multiple WAVs (same format: channels/rate/bit depth/etc.) into one:
+
+```elixir
+{:ok, a} = OpenJTalk.to_wav_binary("これは一つ目。")
+{:ok, b} = OpenJTalk.to_wav_binary("これは二つ目。")
+{:ok, c} = OpenJTalk.to_wav_binary("これは三つ目。")
+
+{:ok, merged} = OpenJTalk.Wav.concat_binaries([a, b, c])
+# or from files:
+# {:ok, merged} = OpenJTalk.Wav.concat_files(["a.wav", "b.wav", "c.wav"])
+```
 
 <!-- MODULEDOC -->
 
@@ -180,24 +196,24 @@ OpenJTalk.Assets.reset_cache()
 How you provision those files into your image is outside the scope of this
 library.
 
-## Third-party components & licenses
+## Third-party components and licenses
 
-This package does not redistribute third-party assets by default.  
-At compile time it may download and build:
+This package does not redistribute third-party assets by default.
+At compile time it may download and build the following components:
 
-- **Open JTalk 1.11** — BSD-3-Clause  
-  Source: http://open-jtalk.sourceforge.net/
-
-- **HTS Engine API 1.10** — BSD-3-Clause  
-  Source: http://hts-engine.sourceforge.net/
-
-- **MeCab 0.996** — tri-licensed (GPL / LGPL / BSD); this project uses the BSD terms  
-  Source: https://taku910.github.io/mecab/
-
-- **Open JTalk Dictionary 1.11** — UTF-8 dictionary package distributed with Open JTalk  
-  Source: https://sourceforge.net/projects/open-jtalk/files/Dictionary/
-
-- **HTS Voice “Mei” (MMDAgent Example 1.8)** — CC BY 3.0  
-  Source: https://sourceforge.net/projects/mmdagent/files/MMDAgent_Example/  
-  Attribution: “HTS Voice ‘Mei’ © Nagoya Institute of Technology, licensed CC BY 3.0.”
-
+- **Open JTalk 1.11**
+  - License: Modified BSD (3-Clause)
+  - Source: http://open-jtalk.sourceforge.net/
+- **HTS Engine API 1.10**
+  - License: Modified BSD (3-Clause)
+  - Source: http://hts-engine.sourceforge.net/
+- **MeCab 0.996**
+  - License: Tri-licensed (GPL / LGPL / BSD); used under BSD terms
+  - Source: https://taku910.github.io/mecab/
+- **Open JTalk Dictionary (NAIST-JDIC UTF-8) 1.11**
+  - License: BSD-style by NAIST
+  - Source: https://sourceforge.net/projects/open-jtalk/files/Dictionary/
+- **HTS Voice “Mei” (MMDAgent_Example 1.8)**
+  - License: CC BY 3.0
+  - Source: https://sourceforge.net/projects/mmdagent/files/MMDAgent_Example/
+  - Attribution: “HTS Voice ‘Mei’ © Nagoya Institute of Technology, licensed CC BY 3.0.”
